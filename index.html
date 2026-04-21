@@ -4,71 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Polyas Media | YouTube Production</title>
+    <!-- Подключаем библиотеки -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        /* Шрифт Apple Style */
         body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background-color: #000; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif; 
+            background-color: #050505; 
             color: #fff; 
             margin: 0; 
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
-        
-        .ambient-glow {
+
+        /* Анимированные световые волны */
+        .ambient-waves {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: #000;
+            background: #050505;
+            overflow: hidden;
         }
-        .blob {
+        .wave {
             position: absolute;
-            width: 700px;
-            height: 700px;
-            background: radial-gradient(circle, rgba(230, 126, 34, 0.05) 0%, rgba(230, 126, 34, 0) 70%);
-            border-radius: 50%;
-            filter: blur(80px);
-            animation: move 20s infinite alternate ease-in-out;
+            width: 150vw;
+            height: 150vw;
+            top: -50vw;
+            left: -25vw;
+            background: radial-gradient(circle at center, rgba(230, 126, 34, 0.03) 0%, rgba(60, 60, 255, 0.01) 40%, transparent 70%);
+            filter: blur(100px);
+            animation: drift 40s infinite ease-in-out;
+            pointer-events: none;
         }
-        @keyframes move {
-            from { transform: translate(-10%, -10%); }
-            to { transform: translate(10%, 10%); }
+        .wave-2 {
+            bottom: -50vw;
+            right: -25vw;
+            top: auto;
+            left: auto;
+            background: radial-gradient(circle at center, rgba(230, 126, 34, 0.02) 0%, transparent 60%);
+            animation-duration: 35s;
+            animation-direction: reverse;
+        }
+        @keyframes drift {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            50% { transform: translate(10%, 5%) rotate(5deg) scale(1.1); }
+            100% { transform: translate(0, 0) rotate(0deg) scale(1); }
         }
 
         .glass {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(25px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.015);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.04);
         }
         
         .luxury-card {
-            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .luxury-card:hover {
-            background: rgba(255, 255, 255, 0.04);
-            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.08);
+            transform: translateY(-8px);
         }
 
         .text-header {
-            letter-spacing: -0.02em;
-            line-height: 1.1;
+            letter-spacing: -0.04em;
+            line-height: 1.0;
         }
-        
+
         ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+        
+        input:focus { border-color: rgba(230, 126, 34, 0.3) !important; }
     </style>
 </head>
 <body>
-    <div class="ambient-glow">
-        <div class="blob" style="top: -10%; left: -10%;"></div>
-        <div class="blob" style="bottom: -10%; right: -10%; background: radial-gradient(circle, rgba(100, 100, 255, 0.02) 0%, transparent 70%);"></div>
+    <div class="ambient-waves">
+        <div class="wave"></div>
+        <div class="wave wave-2"></div>
     </div>
     <div id="root"></div>
 
@@ -76,7 +95,7 @@
         const { useState, useEffect, useRef } = React;
 
         // --- Счетчик чисел ---
-        const CountUp = ({ end, duration = 2000, suffix = "", prefix = "" }) => {
+        const AnimatedCounter = ({ end, duration = 2000, suffix = "", prefix = "" }) => {
             const [count, setCount] = useState(0);
             const [isStarted, setIsStarted] = useState(false);
             const ref = useRef(null);
@@ -89,42 +108,39 @@
 
             useEffect(() => {
                 if (!isStarted) return;
-                let start = 0;
-                const endValue = parseInt(end.toString().replace(/\s/g, ''));
-                const increment = endValue / (duration / 16);
+                let startTime;
+                const endVal = typeof end === 'string' ? parseInt(end.replace(/\D/g,'')) : end;
                 
-                const timer = setInterval(() => {
-                    start += increment;
-                    if (start >= endValue) {
-                        setCount(endValue);
-                        clearInterval(timer);
-                    } else {
-                        setCount(Math.floor(start));
-                    }
-                }, 16);
-                return () => clearInterval(timer);
+                const step = (timestamp) => {
+                    if (!startTime) startTime = timestamp;
+                    const progress = Math.min((timestamp - startTime) / duration, 1);
+                    const easeOutExpo = (t) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+                    setCount(Math.floor(easeOutExpo(progress) * endVal));
+                    if (progress < 1) requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
             }, [isStarted, end]);
 
             return <span ref={ref}>{prefix}{count.toLocaleString('ru-RU')}{suffix}</span>;
         };
 
         // --- Плавное появление ---
-        const Reveal = ({ children, delay = 0 }) => {
-            const [isVisible, setIsVisible] = useState(false);
+        const Reveal = ({ children, delay = 0, className = "" }) => {
+            const [isVis, setVis] = useState(false);
             const ref = useRef(null);
             useEffect(() => {
-                const obs = new IntersectionObserver(([e]) => e.isIntersecting && setIsVisible(true), { threshold: 0.05 });
+                const obs = new IntersectionObserver(([e]) => e.isIntersecting && setVis(true), { threshold: 0.05 });
                 if (ref.current) obs.observe(ref.current);
                 return () => obs.disconnect();
             }, []);
             return (
-                <div ref={ref} className={`transition-all duration-[1200ms] cubic-bezier(0.23, 1, 0.32, 1) ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: `${delay}ms` }}>
+                <div ref={ref} className={`transition-all duration-[1600ms] cubic-bezier(0.16, 1, 0.3, 1) ${className} ${isVis ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`} style={{ transitionDelay: `${delay}ms` }}>
                     {children}
                 </div>
             );
         };
 
-        const Icon = ({ name, className = "w-5 h-5" }) => {
+        const Icon = ({ name, className = "w-6 h-6" }) => {
             const paths = {
                 users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
                 shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
@@ -132,54 +148,57 @@
                 check: "M20 6L9 17l-5-5",
                 maximize: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7",
                 sparkles: "M12 3l1.9 5.8a2 2 0 001.2 1.2L21 12l-5.8 1.9a2 2 0 00-1.2 1.2L12 21l-1.9-5.8a2 2 0 00-1.2-1.2L3 12l5.8-1.9a2 2 0 001.2-1.2L12 3z",
+                x: "M18 6L6 18M6 6l12 12",
                 loader: "M21 12a9 9 0 1 1-6.219-8.56"
             };
             return (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className={className}>
                     <path d={paths[name] || ""} />
                 </svg>
             );
         };
 
+        // --- AI Нейро-продюсер ---
         const AIGenerator = () => {
             const [niche, setNiche] = useState('');
             const [result, setResult] = useState('');
             const [loading, setLoading] = useState(false);
-            const apiKey = ""; 
+            const apiKey = "AIzaSyBVOhp3jels5CihZoi-rpHO2SfAslakTbQ"; 
 
             const generate = async () => {
                 if (!niche) return;
                 setLoading(true);
+                setResult('');
                 try {
                     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: `Моя ниша: ${niche}. Предложи 3 вирусные идеи для YouTube.` }] }],
-                            systemInstruction: { parts: [{ text: "Ты YouTube-продюсер. Пиши: 1. Заголовок. 2. Суть. 3. Хук. Используй <b> и <br>. Стиль: премиальный, без КАПСА." }] }
+                            contents: [{ parts: [{ text: `Ниша: ${niche}. Придумай 3 кликабельные идеи для YouTube роликов.` }] }],
+                            systemInstruction: { parts: [{ text: "Ты экспертный YouTube продюсер. Предложи 3 идеи. Формат: Заголовок, Суть (1 фраза), Хук. Используй <b> и <br>. Стиль: дорогой, профессиональный. Без КАПСА." }] }
                         })
                     });
                     const data = await res.json();
-                    setResult(data.candidates?.[0]?.content?.parts?.[0]?.text || "Попробуйте позже.");
-                } catch (e) { setResult("Ошибка подключения."); }
+                    setResult(data.candidates?.[0]?.content?.parts?.[0]?.text || "Ошибка генерации.");
+                } catch (e) { setResult("Извините, сейчас большая нагрузка. Попробуйте позже."); }
                 finally { setLoading(false); }
             };
 
             return (
-                <div className="glass p-10 md:p-14 rounded-[3rem] w-full max-w-4xl mx-auto luxury-card">
-                    <div className="flex items-center gap-4 mb-6">
-                        <Icon name="sparkles" className="text-[#E67E22] w-7 h-7" />
-                        <h3 className="text-2xl font-bold tracking-tight">Нейро-продюсер</h3>
+                <div className="glass p-12 md:p-16 rounded-[4rem] w-full max-w-4xl mx-auto luxury-card">
+                    <div className="flex items-center gap-4 mb-8">
+                        <Icon name="sparkles" className="text-[#E67E22] w-8 h-8" />
+                        <h3 className="text-3xl font-semibold tracking-tight">ИИ Нейро-продюсер</h3>
                     </div>
-                    <p className="text-white/40 mb-10 text-lg font-light">Введите вашу нишу, чтобы получить 3 стратегии захвата внимания.</p>
-                    <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                        <input value={niche} onChange={e => setNiche(e.target.value)} placeholder="Например: Недвижимость..." className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-white/20 transition-all font-light" />
-                        <button onClick={generate} disabled={loading} className="bg-white text-black px-10 py-4 rounded-2xl font-bold hover:bg-[#E67E22] hover:text-white transition-all flex items-center justify-center gap-2">
-                            {loading && <Icon name="loader" className="animate-spin w-4 h-4" />}
-                            {loading ? "Думаю..." : "Сгенерировать"}
+                    <p className="text-white/40 mb-12 text-lg font-light leading-relaxed">Введите вашу нишу, чтобы получить три готовые стратегии захвата внимания.</p>
+                    <div className="flex flex-col sm:flex-row gap-5 mb-10">
+                        <input value={niche} onChange={e => setNiche(e.target.value)} placeholder="Например: Недвижимость в Дубае..." className="flex-grow bg-white/[0.03] border border-white/5 rounded-[1.5rem] px-8 py-5 outline-none transition-all text-lg font-light" />
+                        <button onClick={generate} disabled={loading} className="bg-white text-black px-12 py-5 rounded-[1.5rem] font-bold text-lg hover:bg-[#E67E22] hover:text-white transition-all flex items-center justify-center gap-3">
+                            {loading && <Icon name="loader" className="animate-spin w-5 h-5" />}
+                            {loading ? "Думаю..." : "Получить идеи"}
                         </button>
                     </div>
-                    {result && <div className="bg-black/30 rounded-3xl p-8 border border-white/5 text-white/70 leading-relaxed font-light text-lg" dangerouslySetInnerHTML={{ __html: result }} />}
+                    {result && <div className="bg-black/30 rounded-[2rem] p-10 border border-white/5 text-white/70 leading-relaxed text-lg font-light" dangerouslySetInnerHTML={{ __html: result }} />}
                 </div>
             );
         };
@@ -189,120 +208,120 @@
 
             return (
                 <div className="w-full">
-                    {/* Hero */}
-                    <section className="min-h-[90vh] flex flex-col items-center justify-center text-center px-6">
+                    
+                    {/* 1. Hero */}
+                    <section className="min-h-screen flex flex-col items-center justify-center text-center px-6 relative">
                         <Reveal>
-                            <div className="glass px-5 py-2 rounded-full mb-10 inline-block border-white/10">
-                                <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-white/40">Polyas Media Group</span>
+                            <div className="glass px-6 py-2 rounded-full mb-12 inline-block">
+                                <span className="text-[10px] font-bold uppercase tracking-[0.6em] text-white/40">Polyas Media Group</span>
                             </div>
                         </Reveal>
                         <Reveal delay={200}>
-                            <h1 className="text-header text-5xl md:text-[84px] font-extrabold tracking-tight mb-8">
-                                Твой YouTube-канал<br/>как <span className="text-[#E67E22]">бизнес-актив</span>
+                            <h1 className="text-header text-6xl md:text-[96px] font-black tracking-tighter mb-10">
+                                Создаю YouTube-каналы, <br/>которые приносят <span className="text-[#E67E22]">заявки</span>
                             </h1>
                         </Reveal>
                         <Reveal delay={400}>
-                            <p className="text-lg md:text-xl text-white/30 max-w-2xl mx-auto mb-14 font-light leading-relaxed">
-                                Создаем медийный капитал, который работает на вас 24/7. <br/>Системный контент и прогнозируемые продажи.
+                            <p className="text-xl md:text-2xl text-white/30 max-w-3xl mx-auto mb-20 font-light leading-snug">
+                                Системный контент-маркетинг для лидеров рынка. <br/>Превращаем охваты в медийный капитал и прогнозируемые продажи.
                             </p>
                         </Reveal>
                         <Reveal delay={600}>
-                            <a href="https://t.me/polyasmedia" target="_blank" className="bg-white text-black px-12 py-5 rounded-full font-bold text-lg hover:bg-[#E67E22] hover:text-white transition-all shadow-xl">
+                            <a href="https://t.me/polyasmedia" target="_blank" className="bg-white text-black px-16 py-7 rounded-full font-bold text-xl hover:bg-[#E67E22] hover:text-white transition-all duration-500 shadow-2xl active:scale-95">
                                 Обсудить проект
                             </a>
                         </Reveal>
                     </section>
 
-                    {/* Почему YouTube */}
+                    {/* 2. Статистика */}
                     <section className="py-24 px-6 max-w-7xl mx-auto">
-                        <Reveal>
-                            <div className="text-center mb-20">
-                                <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-4">Ваши клиенты уже здесь</h2>
-                                <p className="text-white/20 uppercase tracking-[0.2em] text-[10px] font-bold">Почему YouTube — это база</p>
-                            </div>
-                        </Reveal>
-                        <div className="grid md:grid-cols-3 gap-10">
+                        <div className="grid md:grid-cols-3 gap-12">
                             {[
-                                { icon: "users", title: " млн человек", val: 22, desc: "Ежедневная активная аудитория в РФ. Самый высокий чек на рынке." },
-                                { icon: "shield", title: "Тёплый трафик", val: 100, suffix: "% доверия", desc: "Видео снимает возражения еще до первого контакта с менеджером." },
-                                { icon: "trend", title: "Долговечный актив", val: 24, suffix: "/7 работа", desc: "Видео в поиске живет годами, принося лиды без вложений в таргет." }
+                                { icon: "users", val: 22, suff: " млн чел", desc: "Ежедневная активная аудитория в РФ. Самый высокий средний чек." },
+                                { icon: "shield", val: 100, suff: "% доверия", desc: "Видео снимает возражения еще до первого звонка в ваш отдел продаж." },
+                                { icon: "trend", val: 24, suff: "/7 работа", desc: "Контент живет годами, принося лиды без ежедневных вложений в таргет." }
                             ].map((item, i) => (
-                                <Reveal key={i} delay={i * 100}>
-                                    <div className="glass p-10 rounded-[3rem] luxury-card flex flex-col items-center text-center h-full">
-                                        <Icon name={item.icon} className="text-[#E67E22] w-10 h-10 mb-8" />
-                                        <h3 className="text-3xl font-bold mb-4 tracking-tight">
-                                            <CountUp end={item.val} suffix={item.suffix || item.title} />
+                                <Reveal key={i} delay={i * 150}>
+                                    <div className="glass p-14 rounded-[4.5rem] luxury-card flex flex-col items-center text-center h-full">
+                                        <Icon name={item.icon} className="text-[#E67E22] w-12 h-12 mb-12 stroke-[1]" />
+                                        <h3 className="text-5xl font-bold mb-8 tracking-tight">
+                                            <AnimatedCounter end={item.val} suffix={item.suff} />
                                         </h3>
-                                        <p className="text-white/30 text-base leading-relaxed font-light">{item.desc}</p>
+                                        <p className="text-white/30 text-lg leading-relaxed font-light">{item.desc}</p>
                                     </div>
                                 </Reveal>
                             ))}
                         </div>
                     </section>
 
-                    {/* Система работы */}
-                    <section className="py-24 px-6 bg-white/[0.01]">
-                        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-                            <div className="space-y-8">
-                                <Reveal>
-                                    <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-8 italic leading-tight">От стратегии<br/>до прибыли</h2>
-                                    <p className="text-xl text-white/20 mb-10 font-light">Мы строим маркетинговую воронку внутри вашего канала.</p>
-                                </Reveal>
+                    {/* 3. Система */}
+                    <section className="py-32 px-6 bg-white/[0.01]">
+                        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-24 items-center">
+                            <div className="space-y-12">
+                                <Reveal><h2 className="text-5xl md:text-7xl font-bold tracking-tighter italic leading-tight">От стратегии <br/>до прибыли</h2></Reveal>
                                 {[
-                                    {t: "Аналитика", d: "Изучаем боли аудитории и пробелы конкурентов."},
-                                    {t: "Сценарии", d: "Каждое видео удерживает внимание до конца."},
-                                    {t: "Production", d: "Монтаж, дизайн и SEO-оптимизация под ключ."}
-                                ].map((item, i) => (
-                                    <Reveal key={i} delay={i * 150}>
-                                        <div className="flex gap-6 items-start p-6 rounded-[2rem] glass luxury-card">
-                                            <div className="w-10 h-10 rounded-xl bg-[#E67E22]/10 text-[#E67E22] flex items-center justify-center font-bold">{i+1}</div>
+                                    {t: "Глубокая аналитика", d: "Изучаем боли вашей аудитории и слабые места конкурентов."},
+                                    {t: "Сценарный отдел", d: "Каждое видео имеет структуру для максимального удержания."},
+                                    {t: "Production под ключ", d: "Монтаж, дизайн обложек и полная SEO-оптимизация."}
+                                ].map((step, i) => (
+                                    <Reveal key={i} delay={i * 200}>
+                                        <div className="flex gap-8 items-start p-8 rounded-[3rem] glass luxury-card">
+                                            <div className="w-14 h-14 rounded-[1.5rem] bg-[#E67E22]/10 text-[#E67E22] flex items-center justify-center font-bold text-2xl italic">{i+1}</div>
                                             <div>
-                                                <h4 className="text-xl font-bold mb-1 tracking-tight">{item.t}</h4>
-                                                <p className="text-white/30 text-sm font-light leading-relaxed">{item.d}</p>
+                                                <h4 className="text-2xl font-bold mb-2 tracking-tight">{step.t}</h4>
+                                                <p className="text-white/30 text-lg font-light leading-relaxed">{step.d}</p>
                                             </div>
                                         </div>
                                     </Reveal>
                                 ))}
                             </div>
-                            <Reveal delay={300}>
-                                <div className="glass p-12 rounded-[4rem] relative overflow-hidden text-center shadow-2xl">
-                                    <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#E67E22] mb-10">Прогноз окупаемости</p>
-                                    <div className="text-8xl md:text-9xl font-black tracking-tighter leading-none mb-4">
-                                        <CountUp end={1000} />
+                            <Reveal delay={400}>
+                                <div className="glass p-20 rounded-[6rem] text-center shadow-2xl relative overflow-hidden border-white/5">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-[#E67E22] mb-14 italic opacity-60">Прогноз результата</p>
+                                    <div className="text-[130px] font-black tracking-tighter leading-none mb-8">
+                                        <AnimatedCounter end={1000} />
                                     </div>
-                                    <p className="text-2xl font-bold tracking-tight mb-6 opacity-80 uppercase italic">просмотров ≈ 10 заявок</p>
-                                    <p className="text-white/20 text-sm italic font-light">Результат системной работы через 3-4 месяца.</p>
+                                    <p className="text-3xl font-bold tracking-tight mb-10 italic opacity-80 uppercase">просмотров ≈ 10 заявок</p>
+                                    <p className="text-white/20 text-lg font-light italic leading-relaxed">Системный рост на горизонте <br/>3-4 месяцев работы.</p>
                                 </div>
                             </Reveal>
                         </div>
                     </section>
 
-                    {/* Кейсы */}
+                    {/* 4. Кейсы */}
                     <section className="py-24 px-6 max-w-7xl mx-auto">
-                        <Reveal>
-                            <div className="mb-16 flex flex-col md:flex-row justify-between items-end gap-6">
-                                <h2 className="text-5xl md:text-7xl font-bold tracking-tighter italic">Кейсы</h2>
-                                <p className="text-white/20 max-w-xs text-sm font-light italic">Реальные цифры наших клиентов в разных нишах.</p>
+                        <Reveal className="mb-24 flex flex-col md:flex-row justify-between items-end gap-10">
+                            <div>
+                                <h2 className="text-7xl md:text-[110px] font-black tracking-tighter italic mb-4">Кейсы</h2>
+                                <p className="text-[#E67E22] font-bold uppercase tracking-[0.4em] text-[11px]">Реальные результаты наших клиентов</p>
                             </div>
+                            <p className="text-white/20 max-w-sm text-lg font-light leading-relaxed italic">Мы превращаем охваты в медийный актив, адаптируя стратегию под вашу нишу.</p>
                         </Reveal>
-                        <div className="grid md:grid-cols-2 gap-12">
+
+                        <div className="grid md:grid-cols-2 gap-16">
                             {[
-                                { name: "Get ASIC", niche: "Майнинг", img: "photo_1_2026-04-20_22-09-41.jpg", res: "2000 лидов в месяц", val: 2000 },
-                                { name: "SER CRYPTO", niche: "Инвестиции", img: "photo_3_2026-04-20_22-09-41.jpg", res: "1000+ заявок в месяц", val: 1000 },
-                                { name: "NTS AUTO", niche: "Опт из Китая", img: "photo_2_2026-04-20_22-09-41.jpg", res: "Рост продаж в 5 раз", val: 5 },
-                                { name: "Lavanta Ride", niche: "Турция", img: "photo_4_2026-04-20_22-09-41.jpg", res: "200 скутеров в месяц", val: 200 }
+                                { name: "Get ASIC", niche: "Майнинг", img: "photo_1_2026-04-20_22-09-41.jpg", val: 2000, suffix: " лидов / мес" },
+                                { name: "SER CRYPTO", niche: "Инвестиции", img: "photo_3_2026-04-20_22-09-41.jpg", val: 1000, suffix: "+ заявок / мес" },
+                                { name: "NTS AUTO", niche: "Оптовые поставки", img: "photo_2_2026-04-20_22-09-41.jpg", val: 5, prefix: "Рост продаж в ", suffix: " раз" },
+                                { name: "Lavanta Ride", niche: "Бизнес в Турции", img: "photo_4_2026-04-20_22-09-41.jpg", val: 200, suffix: " скутеров / мес" }
                             ].map((k, i) => (
-                                <Reveal key={i} delay={i * 100}>
-                                    <div className="glass rounded-[3rem] overflow-hidden luxury-card cursor-pointer group" onClick={() => setSelectedImg(k.img)}>
-                                        <div className="h-72 overflow-hidden relative">
-                                            <img src={k.img} className="w-full h-full object-cover object-top opacity-50 group-hover:scale-105 transition-all duration-[1.5s]" />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                                <Reveal key={i} delay={i * 150}>
+                                    <div 
+                                        className="group relative glass rounded-[4.5rem] overflow-hidden luxury-card cursor-pointer"
+                                        onClick={() => setSelectedImg(k.img)}
+                                    >
+                                        <div className="h-[500px] overflow-hidden relative">
+                                            <img src={k.img} className="w-full h-full object-cover object-top opacity-60 transition-all duration-[3s] group-hover:scale-105 group-hover:opacity-80" alt={k.name} />
+                                            <div className="absolute top-12 right-12 w-16 h-16 rounded-full glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-75 group-hover:scale-100">
+                                                <Icon name="maximize" className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
                                         </div>
-                                        <div className="p-10 -mt-16 relative z-10">
-                                            <h3 className="text-3xl font-bold tracking-tight mb-1 uppercase">{k.name}</h3>
-                                            <p className="text-[#E67E22] font-bold text-[10px] uppercase tracking-[0.3em] mb-6">{k.niche}</p>
-                                            <div className="text-2xl font-bold tracking-tighter text-white/90">
-                                                {i === 2 ? <><CountUp end={5} prefix="х" /> рост продаж</> : <CountUp end={k.val} suffix={k.res.replace(k.val.toString(), '')} />}
+                                        <div className="p-16 -mt-32 relative z-10">
+                                            <h3 className="text-4xl font-bold tracking-tight mb-3 italic uppercase">{k.name}</h3>
+                                            <p className="text-[#E67E22] font-bold text-[11px] uppercase tracking-[0.4em] mb-12">{k.niche}</p>
+                                            <div className="text-4xl font-bold tracking-tighter text-white/90">
+                                                <AnimatedCounter end={k.val} prefix={k.prefix} suffix={k.suffix} />
                                             </div>
                                         </div>
                                     </div>
@@ -311,44 +330,40 @@
                         </div>
                     </section>
 
-                    {/* AI */}
-                    <section className="py-32 px-6">
-                        <Reveal>
-                            <div className="text-center mb-10">
-                                <h2 className="text-4xl md:text-6xl font-bold tracking-tight italic">Ваши идеи уже здесь</h2>
-                            </div>
+                    {/* 5. AI */}
+                    <section className="py-40 px-6">
+                        <Reveal className="text-center mb-20">
+                            <h2 className="text-5xl md:text-[80px] font-bold tracking-tighter italic">Идеи для вас</h2>
                         </Reveal>
                         <Reveal delay={200}><AIGenerator /></Reveal>
                     </section>
 
-                    {/* Прайсы */}
+                    {/* 6. Прайсы */}
                     <section className="py-32 px-6 max-w-7xl mx-auto">
-                        <Reveal>
-                            <h2 className="text-6xl md:text-[100px] font-black tracking-tighter text-center mb-24 italic opacity-5 uppercase">Прайсы</h2>
-                        </Reveal>
-                        <div className="grid lg:grid-cols-3 gap-10">
+                        <Reveal><h2 className="text-[120px] md:text-[180px] font-black tracking-tighter text-center mb-32 italic opacity-[0.03] uppercase select-none">Прайсы</h2></Reveal>
+                        <div className="grid lg:grid-cols-3 gap-12">
                             {[
                                 { title: "Minimum", price: 49990, items: ["Аналитика (соц. сети)", "Онлайн сопровождение", "Консультации по медиа"] },
-                                { title: "Standart", price: 59990, items: ["4 видео + 10 Shorts", "Сценарии + Монтаж", "SEO + Упаковка канала"], popular: true },
-                                { title: "Premium", price: 98990, items: ["Все из Standart", "Съемка в любом городе", "Работа с продюсером"] }
+                                { title: "Standart", price: 59990, items: ["4 видео + 10 Shorts / мес", "Сценарии + Монтаж + Дизайн", "SEO + Упаковка канала"], popular: true },
+                                { title: "Premium", price: 98990, items: ["Все возможности Standart", "Съемка в любом городе", "Персональный продюсер"] }
                             ].map((p, i) => (
-                                <Reveal key={i} delay={i * 150}>
-                                    <div className={`glass p-10 rounded-[3.5rem] flex flex-col luxury-card relative ${p.popular ? 'scale-105 border-[#E67E22]/30' : ''}`}>
-                                        {p.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#E67E22] text-black font-bold px-5 py-1.5 rounded-full uppercase text-[9px] tracking-widest shadow-xl">Best Choice</div>}
-                                        <h3 className="text-3xl font-bold mb-10 tracking-tight italic uppercase">{p.title}</h3>
-                                        <ul className="space-y-6 mb-16 flex-grow">
+                                <Reveal key={i} delay={i * 200} className="h-full">
+                                    <div className={`flex flex-col glass rounded-[5rem] p-16 h-full luxury-card relative ${p.popular ? 'scale-105 border-[#E67E22]/30 shadow-2xl' : ''}`}>
+                                        {p.popular && <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#E67E22] text-black font-black px-8 py-2 rounded-full uppercase text-[10px] tracking-widest shadow-xl">Рекомендуем</div>}
+                                        <h3 className="text-4xl font-bold mb-16 tracking-tight italic uppercase">{p.title}</h3>
+                                        <ul className="space-y-10 mb-24 flex-grow">
                                             {p.items.map((item, idx) => (
-                                                <li key={idx} className="flex gap-4 items-start text-base text-white/40 font-light">
-                                                    <Icon name="check" className="text-[#E67E22] w-5 h-5 shrink-0" />
+                                                <li key={idx} className="flex gap-6 items-start text-xl text-white/40 font-light leading-snug">
+                                                    <Icon name="check" className="text-[#E67E22] w-7 h-7 shrink-0 mt-0.5 stroke-[1.5]" />
                                                     <span>{item}</span>
                                                 </li>
                                             ))}
                                         </ul>
-                                        <div className="pt-8 border-t border-white/5">
-                                            <div className="text-4xl font-black tracking-tighter text-white mb-1">
-                                                <CountUp end={p.price} suffix=" ₽" />
+                                        <div className="pt-12 border-t border-white/5">
+                                            <div className="text-5xl font-black tracking-tighter text-white mb-3">
+                                                <AnimatedCounter end={p.price} suffix=" ₽" />
                                             </div>
-                                            <p className="text-[9px] text-white/20 uppercase font-bold tracking-widest leading-none">скидка 20% / 3 мес.</p>
+                                            <p className="text-[11px] text-white/20 uppercase font-bold tracking-[0.2em] italic">скидка 20% при контракте на 3 мес.</p>
                                         </div>
                                     </div>
                                 </Reveal>
@@ -357,20 +372,24 @@
                     </section>
 
                     {/* Footer */}
-                    <footer className="py-48 text-center relative overflow-hidden">
-                        <div className="absolute inset-0 bg-[#E67E22]/5 blur-[150px] pointer-events-none"></div>
+                    <footer className="py-60 text-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[#E67E22]/5 blur-[200px] pointer-events-none"></div>
                         <Reveal>
-                            <h2 className="text-6xl md:text-[100px] font-extrabold tracking-tighter italic leading-none mb-14">Пора расти</h2>
-                            <a href="https://t.me/polyasmedia" target="_blank" className="inline-block px-16 py-8 bg-[#E67E22] text-white rounded-full font-bold text-2xl uppercase italic tracking-tighter shadow-2xl hover:scale-105 transition-all">
+                            <h2 className="text-[120px] font-black tracking-tighter italic leading-none mb-16 uppercase opacity-[0.03]">Scale</h2>
+                            <h3 className="text-6xl md:text-[100px] font-bold tracking-tighter mb-24 leading-none italic">Пора расти</h3>
+                            <a href="https://t.me/polyasmedia" target="_blank" className="inline-block px-24 py-10 bg-white text-black rounded-full font-black text-3xl uppercase italic tracking-tighter shadow-2xl hover:bg-[#E67E22] hover:text-white hover:scale-110 transition-all duration-700 active:scale-95">
                                 Написать в Telegram
                             </a>
                         </Reveal>
                     </footer>
 
-                    {/* Modal */}
+                    {/* Модалка */}
                     {selectedImg && (
-                        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-6 cursor-zoom-out animate-in fade-in duration-300" onClick={() => setSelectedImg(null)}>
-                            <img src={selectedImg} className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain animate-in zoom-in-95 duration-500" />
+                        <div className="fixed inset-0 z-[100] bg-black/98 flex items-center justify-center p-6 md:p-20 cursor-zoom-out animate-in fade-in duration-500" onClick={() => setSelectedImg(null)}>
+                            <div className="absolute top-12 right-12 text-white/30 hover:text-white transition-colors cursor-pointer text-[12px] font-bold uppercase tracking-widest flex items-center gap-4">
+                                Закрыть <Icon name="x" className="w-6 h-6" />
+                            </div>
+                            <img src={selectedImg} className="max-w-full max-h-full rounded-[3rem] shadow-2xl object-contain animate-in zoom-in-95 duration-700" />
                         </div>
                     )}
                 </div>
