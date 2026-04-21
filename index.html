@@ -4,68 +4,183 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Polyas Media | YouTube Production</title>
-    <!-- Библиотеки -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Имитация SF UI Display */
         body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #050505; 
-            color: white; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: #000; 
+            color: #fff; 
             margin: 0; 
-            overflow-x: hidden; 
+            overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
-        .luxury-glass { 
-            background: rgba(255, 255, 255, 0.02); 
-            backdrop-filter: blur(20px); 
-            border: 1px solid rgba(255, 255, 255, 0.05); 
+        
+        .ambient-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #000;
         }
+        .blob {
+            position: absolute;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(230, 126, 34, 0.05) 0%, rgba(230, 126, 34, 0) 70%);
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: move 20s infinite alternate ease-in-out;
+        }
+        @keyframes move {
+            from { transform: translate(-10%, -10%); }
+            to { transform: translate(10%, 10%); }
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
         .luxury-card {
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
         }
         .luxury-card:hover {
             background: rgba(255, 255, 255, 0.04);
-            border-color: rgba(230, 126, 34, 0.3);
-            transform: translateY(-8px);
+            transform: translateY(-4px);
         }
+
         .text-header {
-            letter-spacing: -0.05em;
-            line-height: 0.9;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
         }
-        ::selection {
-            background: #E67E22;
-            color: white;
-        }
-        /* Скроллбар */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #050505; }
-        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 10px; }
+        
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body>
+    <div class="ambient-glow">
+        <div class="blob" style="top: -10%; left: -10%;"></div>
+        <div class="blob" style="bottom: -10%; right: -10%; background: radial-gradient(circle, rgba(100, 100, 255, 0.02) 0%, transparent 70%);"></div>
+    </div>
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // Компонент Иконок
+        // --- Счетчик чисел ---
+        const CountUp = ({ end, duration = 2000, suffix = "", prefix = "" }) => {
+            const [count, setCount] = useState(0);
+            const [isStarted, setIsStarted] = useState(false);
+            const ref = useRef(null);
+
+            useEffect(() => {
+                const obs = new IntersectionObserver(([e]) => e.isIntersecting && setIsStarted(true), { threshold: 0.1 });
+                if (ref.current) obs.observe(ref.current);
+                return () => obs.disconnect();
+            }, []);
+
+            useEffect(() => {
+                if (!isStarted) return;
+                let start = 0;
+                const endValue = parseInt(end.toString().replace(/\s/g, ''));
+                const increment = endValue / (duration / 16);
+                
+                const timer = setInterval(() => {
+                    start += increment;
+                    if (start >= endValue) {
+                        setCount(endValue);
+                        clearInterval(timer);
+                    } else {
+                        setCount(Math.floor(start));
+                    }
+                }, 16);
+                return () => clearInterval(timer);
+            }, [isStarted, end]);
+
+            return <span ref={ref}>{prefix}{count.toLocaleString('ru-RU')}{suffix}</span>;
+        };
+
+        // --- Плавное появление ---
+        const Reveal = ({ children, delay = 0 }) => {
+            const [isVisible, setIsVisible] = useState(false);
+            const ref = useRef(null);
+            useEffect(() => {
+                const obs = new IntersectionObserver(([e]) => e.isIntersecting && setIsVisible(true), { threshold: 0.05 });
+                if (ref.current) obs.observe(ref.current);
+                return () => obs.disconnect();
+            }, []);
+            return (
+                <div ref={ref} className={`transition-all duration-[1200ms] cubic-bezier(0.23, 1, 0.32, 1) ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: `${delay}ms` }}>
+                    {children}
+                </div>
+            );
+        };
+
         const Icon = ({ name, className = "w-5 h-5" }) => {
             const paths = {
+                users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+                shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+                trend: "M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",
                 check: "M20 6L9 17l-5-5",
-                arrow: "M5 12h14M12 5l7 7-7 7",
-                plus: "M12 5v14M5 12h14",
-                zap: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
-                maximize: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+                maximize: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7",
+                sparkles: "M12 3l1.9 5.8a2 2 0 001.2 1.2L21 12l-5.8 1.9a2 2 0 00-1.2 1.2L12 21l-1.9-5.8a2 2 0 00-1.2-1.2L3 12l5.8-1.9a2 2 0 001.2-1.2L12 3z",
+                loader: "M21 12a9 9 0 1 1-6.219-8.56"
             };
             return (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
                     <path d={paths[name] || ""} />
                 </svg>
+            );
+        };
+
+        const AIGenerator = () => {
+            const [niche, setNiche] = useState('');
+            const [result, setResult] = useState('');
+            const [loading, setLoading] = useState(false);
+            const apiKey = ""; 
+
+            const generate = async () => {
+                if (!niche) return;
+                setLoading(true);
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: `Моя ниша: ${niche}. Предложи 3 вирусные идеи для YouTube.` }] }],
+                            systemInstruction: { parts: [{ text: "Ты YouTube-продюсер. Пиши: 1. Заголовок. 2. Суть. 3. Хук. Используй <b> и <br>. Стиль: премиальный, без КАПСА." }] }
+                        })
+                    });
+                    const data = await res.json();
+                    setResult(data.candidates?.[0]?.content?.parts?.[0]?.text || "Попробуйте позже.");
+                } catch (e) { setResult("Ошибка подключения."); }
+                finally { setLoading(false); }
+            };
+
+            return (
+                <div className="glass p-10 md:p-14 rounded-[3rem] w-full max-w-4xl mx-auto luxury-card">
+                    <div className="flex items-center gap-4 mb-6">
+                        <Icon name="sparkles" className="text-[#E67E22] w-7 h-7" />
+                        <h3 className="text-2xl font-bold tracking-tight">Нейро-продюсер</h3>
+                    </div>
+                    <p className="text-white/40 mb-10 text-lg font-light">Введите вашу нишу, чтобы получить 3 стратегии захвата внимания.</p>
+                    <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                        <input value={niche} onChange={e => setNiche(e.target.value)} placeholder="Например: Недвижимость..." className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-white/20 transition-all font-light" />
+                        <button onClick={generate} disabled={loading} className="bg-white text-black px-10 py-4 rounded-2xl font-bold hover:bg-[#E67E22] hover:text-white transition-all flex items-center justify-center gap-2">
+                            {loading && <Icon name="loader" className="animate-spin w-4 h-4" />}
+                            {loading ? "Думаю..." : "Сгенерировать"}
+                        </button>
+                    </div>
+                    {result && <div className="bg-black/30 rounded-3xl p-8 border border-white/5 text-white/70 leading-relaxed font-light text-lg" dangerouslySetInnerHTML={{ __html: result }} />}
+                </div>
             );
         };
 
@@ -73,161 +188,191 @@
             const [selectedImg, setSelectedImg] = useState(null);
 
             return (
-                <div className="w-full selection:bg-orange-500">
-                    
-                    {/* Слайд 1: Главный экран */}
-                    <section className="min-h-screen flex flex-col items-center justify-center text-center px-6 relative">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(230,126,34,0.03)_0%,transparent_70%)] pointer-events-none"></div>
-                        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-white/5 bg-white/[0.02] mb-12 overflow-hidden">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#E67E22] animate-pulse"></span>
-                            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">SYSTEM YOUTUBE PRODUCTION</span>
-                        </div>
-                        <h1 className="text-header text-6xl md:text-[120px] font-black uppercase mb-8">
-                            Создаю <span className="text-[#E67E22]">трафик</span><br/>через контент
-                        </h1>
-                        <p className="text-lg md:text-xl text-white/30 max-w-2xl mb-16 font-medium leading-relaxed uppercase tracking-tight">
-                            Индивидуальные стратегии продвижения для бизнеса, <br/>который ценит качество и результат.
-                        </p>
-                        <a href="https://t.me/polyasmedia" target="_blank" className="group flex items-center gap-4 bg-white text-black px-10 py-5 rounded-full font-black text-sm uppercase tracking-widest hover:bg-[#E67E22] hover:text-white transition-all duration-500">
-                            Обсудить проект <Icon name="arrow" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        </a>
+                <div className="w-full">
+                    {/* Hero */}
+                    <section className="min-h-[90vh] flex flex-col items-center justify-center text-center px-6">
+                        <Reveal>
+                            <div className="glass px-5 py-2 rounded-full mb-10 inline-block border-white/10">
+                                <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-white/40">Polyas Media Group</span>
+                            </div>
+                        </Reveal>
+                        <Reveal delay={200}>
+                            <h1 className="text-header text-5xl md:text-[84px] font-extrabold tracking-tight mb-8">
+                                Твой YouTube-канал<br/>как <span className="text-[#E67E22]">бизнес-актив</span>
+                            </h1>
+                        </Reveal>
+                        <Reveal delay={400}>
+                            <p className="text-lg md:text-xl text-white/30 max-w-2xl mx-auto mb-14 font-light leading-relaxed">
+                                Создаем медийный капитал, который работает на вас 24/7. <br/>Системный контент и прогнозируемые продажи.
+                            </p>
+                        </Reveal>
+                        <Reveal delay={600}>
+                            <a href="https://t.me/polyasmedia" target="_blank" className="bg-white text-black px-12 py-5 rounded-full font-bold text-lg hover:bg-[#E67E22] hover:text-white transition-all shadow-xl">
+                                Обсудить проект
+                            </a>
+                        </Reveal>
                     </section>
 
-                    {/* Слайд 2: Твердые результаты (Кейсы) */}
-                    <section className="py-32 px-6 max-w-7xl mx-auto">
-                        <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
-                            <div>
-                                <p className="text-[#E67E22] font-bold text-xs uppercase tracking-[0.4em] mb-4">Portfolio</p>
-                                <h2 className="text-header text-5xl md:text-7xl font-black uppercase italic">Твердые результаты</h2>
+                    {/* Почему YouTube */}
+                    <section className="py-24 px-6 max-w-7xl mx-auto">
+                        <Reveal>
+                            <div className="text-center mb-20">
+                                <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-4">Ваши клиенты уже здесь</h2>
+                                <p className="text-white/20 uppercase tracking-[0.2em] text-[10px] font-bold">Почему YouTube — это база</p>
                             </div>
-                            <p className="text-white/20 text-sm max-w-xs uppercase font-bold tracking-tighter">
-                                Более 70 успешно запущенных каналов и 320+ уникальных видео-проектов.
-                            </p>
-                        </div>
-                        
-                        <div className="grid md:grid-cols-2 gap-12">
+                        </Reveal>
+                        <div className="grid md:grid-cols-3 gap-10">
                             {[
-                                { name: "Get ASIC", niche: "Майнинг оборудование", img: "photo_1_2026-04-20_22-09-41.jpg", res: "2000 лидов / мес" },
-                                { name: "SER CRYPTO", niche: "Инвестиции", img: "photo_3_2026-04-20_22-09-41.jpg", res: "1000+ заявок / мес" },
-                                { name: "NTS AUTO", niche: "Оптовые поставки", img: "photo_2_2026-04-20_22-09-41.jpg", res: "Рост продаж x5" },
-                                { name: "Lavanta Ride", niche: "Бизнес в Турции", img: "photo_4_2026-04-20_22-09-41.jpg", res: "200 скутеров / мес" }
-                            ].map((k, i) => (
-                                <div key={i} className="luxury-card group rounded-[2.5rem] overflow-hidden border border-white/5 bg-white/[0.01] cursor-pointer" onClick={() => setSelectedImg(k.img)}>
-                                    <div className="h-[400px] relative overflow-hidden bg-[#0a0a0a]">
-                                        <img src={k.img} className="w-full h-full object-cover object-top opacity-60 group-hover:scale-105 group-hover:opacity-100 transition-all duration-1000" alt={k.name} />
-                                        <div className="absolute top-8 right-8 w-12 h-12 rounded-full luxury-glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Icon name="maximize" className="w-4 h-4 text-white" />
-                                        </div>
-                                        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent"></div>
+                                { icon: "users", title: " млн человек", val: 22, desc: "Ежедневная активная аудитория в РФ. Самый высокий чек на рынке." },
+                                { icon: "shield", title: "Тёплый трафик", val: 100, suffix: "% доверия", desc: "Видео снимает возражения еще до первого контакта с менеджером." },
+                                { icon: "trend", title: "Долговечный актив", val: 24, suffix: "/7 работа", desc: "Видео в поиске живет годами, принося лиды без вложений в таргет." }
+                            ].map((item, i) => (
+                                <Reveal key={i} delay={i * 100}>
+                                    <div className="glass p-10 rounded-[3rem] luxury-card flex flex-col items-center text-center h-full">
+                                        <Icon name={item.icon} className="text-[#E67E22] w-10 h-10 mb-8" />
+                                        <h3 className="text-3xl font-bold mb-4 tracking-tight">
+                                            <CountUp end={item.val} suffix={item.suffix || item.title} />
+                                        </h3>
+                                        <p className="text-white/30 text-base leading-relaxed font-light">{item.desc}</p>
                                     </div>
-                                    <div className="p-10 -mt-20 relative z-10">
-                                        <h3 className="text-header text-4xl font-black uppercase mb-2">{k.name}</h3>
-                                        <p className="text-[#E67E22] font-black text-[10px] uppercase tracking-[0.3em] mb-6">{k.niche}</p>
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-[1px] w-8 bg-white/20"></div>
-                                            <span className="text-2xl font-black italic tracking-tighter text-white/90">{k.res}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                </Reveal>
                             ))}
                         </div>
                     </section>
 
-                    {/* Слайд 3: Прайсы */}
-                    <section className="py-32 px-6 max-w-7xl mx-auto">
-                        <div className="text-center mb-24">
-                            <h2 className="text-header text-6xl md:text-[100px] font-black uppercase tracking-tighter">Прайсы</h2>
-                            <p className="text-white/20 font-bold uppercase tracking-[0.2em] mt-4 text-sm italic">Выбирайте свой уровень влияния</p>
-                        </div>
-
-                        <div className="grid lg:grid-cols-3 gap-8 items-stretch">
-                            {/* Minimum */}
-                            <div className="luxury-card p-12 rounded-[3rem] border border-white/5 bg-white/[0.02] flex flex-col">
-                                <h3 className="text-header text-3xl font-black uppercase mb-10 italic">Minimum</h3>
-                                <ul className="space-y-6 mb-16 flex-grow">
-                                    {[
-                                        "Аналитика и стратегия (соц. сети)",
-                                        "Онлайн сопровождение",
-                                        "Консультации по всем вопросам"
-                                    ].map((t, i) => (
-                                        <li key={i} className="flex gap-4 items-start text-white/40 text-sm font-medium leading-relaxed uppercase tracking-tighter">
-                                            <Icon name="check" className="text-[#E67E22] w-4 h-4 shrink-0 mt-0.5" />
-                                            <span>{t}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <div className="pt-8 border-t border-white/5">
-                                    <div className="text-4xl font-black tracking-tighter italic uppercase text-white/90">49 990 ₽</div>
-                                </div>
+                    {/* Система работы */}
+                    <section className="py-24 px-6 bg-white/[0.01]">
+                        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
+                            <div className="space-y-8">
+                                <Reveal>
+                                    <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-8 italic leading-tight">От стратегии<br/>до прибыли</h2>
+                                    <p className="text-xl text-white/20 mb-10 font-light">Мы строим маркетинговую воронку внутри вашего канала.</p>
+                                </Reveal>
+                                {[
+                                    {t: "Аналитика", d: "Изучаем боли аудитории и пробелы конкурентов."},
+                                    {t: "Сценарии", d: "Каждое видео удерживает внимание до конца."},
+                                    {t: "Production", d: "Монтаж, дизайн и SEO-оптимизация под ключ."}
+                                ].map((item, i) => (
+                                    <Reveal key={i} delay={i * 150}>
+                                        <div className="flex gap-6 items-start p-6 rounded-[2rem] glass luxury-card">
+                                            <div className="w-10 h-10 rounded-xl bg-[#E67E22]/10 text-[#E67E22] flex items-center justify-center font-bold">{i+1}</div>
+                                            <div>
+                                                <h4 className="text-xl font-bold mb-1 tracking-tight">{item.t}</h4>
+                                                <p className="text-white/30 text-sm font-light leading-relaxed">{item.d}</p>
+                                            </div>
+                                        </div>
+                                    </Reveal>
+                                ))}
                             </div>
-
-                            {/* Standart */}
-                            <div className="luxury-card p-12 rounded-[3rem] border border-[#E67E22]/30 bg-white/[0.03] flex flex-col relative scale-105 shadow-2xl">
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#E67E22] text-white text-[9px] font-black px-5 py-1.5 rounded-full uppercase tracking-[0.2em]">MOST POPULAR</div>
-                                <h3 className="text-header text-3xl font-black uppercase mb-10 italic">Standart</h3>
-                                <ul className="space-y-6 mb-16 flex-grow">
-                                    {[
-                                        "4 видео + 10 Shorts в месяц",
-                                        "Сценарии + Монтаж + Дизайн",
-                                        "SEO Оптимизация и упаковка",
-                                        "Полное ведение канала"
-                                    ].map((t, i) => (
-                                        <li key={i} className="flex gap-4 items-start text-white/90 text-sm font-bold leading-relaxed uppercase tracking-tighter">
-                                            <Icon name="check" className="text-[#E67E22] w-4 h-4 shrink-0 mt-0.5" />
-                                            <span>{t}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <div className="pt-8 border-t border-white/10">
-                                    <div className="text-5xl font-black tracking-tighter italic uppercase text-[#E67E22]">59 990 ₽</div>
-                                    <p className="text-[10px] text-white/20 mt-3 font-bold uppercase tracking-widest">скидка 20% от 3 месяцев</p>
+                            <Reveal delay={300}>
+                                <div className="glass p-12 rounded-[4rem] relative overflow-hidden text-center shadow-2xl">
+                                    <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#E67E22] mb-10">Прогноз окупаемости</p>
+                                    <div className="text-8xl md:text-9xl font-black tracking-tighter leading-none mb-4">
+                                        <CountUp end={1000} />
+                                    </div>
+                                    <p className="text-2xl font-bold tracking-tight mb-6 opacity-80 uppercase italic">просмотров ≈ 10 заявок</p>
+                                    <p className="text-white/20 text-sm italic font-light">Результат системной работы через 3-4 месяца.</p>
                                 </div>
-                            </div>
-
-                            {/* Premium */}
-                            <div className="luxury-card p-12 rounded-[3rem] border border-white/5 bg-white/[0.02] flex flex-col">
-                                <h3 className="text-header text-3xl font-black uppercase mb-10 italic">Premium</h3>
-                                <ul className="space-y-6 mb-16 flex-grow">
-                                    {[
-                                        "Все возможности Standart",
-                                        "Съемка в студии (любой город)",
-                                        "Участие продюсера",
-                                        "Рекламный отдел и таргет"
-                                    ].map((t, i) => (
-                                        <li key={i} className="flex gap-4 items-start text-white/40 text-sm font-medium leading-relaxed uppercase tracking-tighter">
-                                            <Icon name="check" className="text-[#E67E22] w-4 h-4 shrink-0 mt-0.5" />
-                                            <span>{t}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <div className="pt-8 border-t border-white/5">
-                                    <div className="text-4xl font-black tracking-tighter italic uppercase text-white/90">98 990 ₽</div>
-                                </div>
-                            </div>
+                            </Reveal>
                         </div>
                     </section>
 
-                    {/* Модалка для картинок */}
-                    {selectedImg && (
-                        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-6 cursor-zoom-out" onClick={() => setSelectedImg(null)}>
-                            <div className="absolute top-10 right-10 text-white/40 hover:text-white transition-colors cursor-pointer">
-                                <div className="text-xs font-black uppercase tracking-widest flex items-center gap-2">Закрыть <Icon name="plus" className="rotate-45" /></div>
+                    {/* Кейсы */}
+                    <section className="py-24 px-6 max-w-7xl mx-auto">
+                        <Reveal>
+                            <div className="mb-16 flex flex-col md:flex-row justify-between items-end gap-6">
+                                <h2 className="text-5xl md:text-7xl font-bold tracking-tighter italic">Кейсы</h2>
+                                <p className="text-white/20 max-w-xs text-sm font-light italic">Реальные цифры наших клиентов в разных нишах.</p>
                             </div>
-                            <img src={selectedImg} className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain animate-in zoom-in-95 duration-300" />
+                        </Reveal>
+                        <div className="grid md:grid-cols-2 gap-12">
+                            {[
+                                { name: "Get ASIC", niche: "Майнинг", img: "photo_1_2026-04-20_22-09-41.jpg", res: "2000 лидов в месяц", val: 2000 },
+                                { name: "SER CRYPTO", niche: "Инвестиции", img: "photo_3_2026-04-20_22-09-41.jpg", res: "1000+ заявок в месяц", val: 1000 },
+                                { name: "NTS AUTO", niche: "Опт из Китая", img: "photo_2_2026-04-20_22-09-41.jpg", res: "Рост продаж в 5 раз", val: 5 },
+                                { name: "Lavanta Ride", niche: "Турция", img: "photo_4_2026-04-20_22-09-41.jpg", res: "200 скутеров в месяц", val: 200 }
+                            ].map((k, i) => (
+                                <Reveal key={i} delay={i * 100}>
+                                    <div className="glass rounded-[3rem] overflow-hidden luxury-card cursor-pointer group" onClick={() => setSelectedImg(k.img)}>
+                                        <div className="h-72 overflow-hidden relative">
+                                            <img src={k.img} className="w-full h-full object-cover object-top opacity-50 group-hover:scale-105 transition-all duration-[1.5s]" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                                        </div>
+                                        <div className="p-10 -mt-16 relative z-10">
+                                            <h3 className="text-3xl font-bold tracking-tight mb-1 uppercase">{k.name}</h3>
+                                            <p className="text-[#E67E22] font-bold text-[10px] uppercase tracking-[0.3em] mb-6">{k.niche}</p>
+                                            <div className="text-2xl font-bold tracking-tighter text-white/90">
+                                                {i === 2 ? <><CountUp end={5} prefix="х" /> рост продаж</> : <CountUp end={k.val} suffix={k.res.replace(k.val.toString(), '')} />}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Reveal>
+                            ))}
                         </div>
-                    )}
+                    </section>
 
-                    {/* Подвал */}
-                    <footer className="py-40 text-center relative">
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-t from-[#E67E22]/10 to-transparent pointer-events-none"></div>
-                        <h2 className="text-header text-6xl md:text-[120px] font-black uppercase tracking-tighter italic leading-none mb-16">
-                            Начнем <br/><span className="text-[#E67E22]">сейчас?</span>
-                        </h2>
-                        <a href="https://t.me/polyasmedia" target="_blank" className="inline-block px-16 py-8 bg-[#E67E22] text-white rounded-full font-black text-2xl uppercase italic tracking-tighter hover:scale-110 active:scale-95 shadow-[0_0_80px_rgba(230,126,34,0.4)] transition-all duration-500">
-                            Написать в Telegram
-                        </a>
+                    {/* AI */}
+                    <section className="py-32 px-6">
+                        <Reveal>
+                            <div className="text-center mb-10">
+                                <h2 className="text-4xl md:text-6xl font-bold tracking-tight italic">Ваши идеи уже здесь</h2>
+                            </div>
+                        </Reveal>
+                        <Reveal delay={200}><AIGenerator /></Reveal>
+                    </section>
+
+                    {/* Прайсы */}
+                    <section className="py-32 px-6 max-w-7xl mx-auto">
+                        <Reveal>
+                            <h2 className="text-6xl md:text-[100px] font-black tracking-tighter text-center mb-24 italic opacity-5 uppercase">Прайсы</h2>
+                        </Reveal>
+                        <div className="grid lg:grid-cols-3 gap-10">
+                            {[
+                                { title: "Minimum", price: 49990, items: ["Аналитика (соц. сети)", "Онлайн сопровождение", "Консультации по медиа"] },
+                                { title: "Standart", price: 59990, items: ["4 видео + 10 Shorts", "Сценарии + Монтаж", "SEO + Упаковка канала"], popular: true },
+                                { title: "Premium", price: 98990, items: ["Все из Standart", "Съемка в любом городе", "Работа с продюсером"] }
+                            ].map((p, i) => (
+                                <Reveal key={i} delay={i * 150}>
+                                    <div className={`glass p-10 rounded-[3.5rem] flex flex-col luxury-card relative ${p.popular ? 'scale-105 border-[#E67E22]/30' : ''}`}>
+                                        {p.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#E67E22] text-black font-bold px-5 py-1.5 rounded-full uppercase text-[9px] tracking-widest shadow-xl">Best Choice</div>}
+                                        <h3 className="text-3xl font-bold mb-10 tracking-tight italic uppercase">{p.title}</h3>
+                                        <ul className="space-y-6 mb-16 flex-grow">
+                                            {p.items.map((item, idx) => (
+                                                <li key={idx} className="flex gap-4 items-start text-base text-white/40 font-light">
+                                                    <Icon name="check" className="text-[#E67E22] w-5 h-5 shrink-0" />
+                                                    <span>{item}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <div className="pt-8 border-t border-white/5">
+                                            <div className="text-4xl font-black tracking-tighter text-white mb-1">
+                                                <CountUp end={p.price} suffix=" ₽" />
+                                            </div>
+                                            <p className="text-[9px] text-white/20 uppercase font-bold tracking-widest leading-none">скидка 20% / 3 мес.</p>
+                                        </div>
+                                    </div>
+                                </Reveal>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Footer */}
+                    <footer className="py-48 text-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[#E67E22]/5 blur-[150px] pointer-events-none"></div>
+                        <Reveal>
+                            <h2 className="text-6xl md:text-[100px] font-extrabold tracking-tighter italic leading-none mb-14">Пора расти</h2>
+                            <a href="https://t.me/polyasmedia" target="_blank" className="inline-block px-16 py-8 bg-[#E67E22] text-white rounded-full font-bold text-2xl uppercase italic tracking-tighter shadow-2xl hover:scale-105 transition-all">
+                                Написать в Telegram
+                            </a>
+                        </Reveal>
                     </footer>
 
+                    {/* Modal */}
+                    {selectedImg && (
+                        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-6 cursor-zoom-out animate-in fade-in duration-300" onClick={() => setSelectedImg(null)}>
+                            <img src={selectedImg} className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain animate-in zoom-in-95 duration-500" />
+                        </div>
+                    )}
                 </div>
             );
         };
